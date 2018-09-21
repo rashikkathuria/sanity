@@ -1,6 +1,7 @@
 const generateHelpUrl = require('@sanity/generate-help-url')
 const assign = require('object-assign')
 const validate = require('./validators')
+const once = require('./util/once')
 
 const defaultCdnHost = 'apicdn.sanity.io'
 const defaultConfig = {
@@ -10,25 +11,23 @@ const defaultConfig = {
   isPromiseAPI: true
 }
 
-const cdnWarning = [
+const IS_BROWSER = () => typeof window !== 'undefined'
+
+// eslint-disable-next-line no-console
+const printWarning = message => once(() => console.warn(message.join(' ')))
+
+const printCdnWarning = printWarning([
   'You are not using the Sanity CDN. That means your data is always fresh, but the CDN is faster and',
   `cheaper. Think about it! For more info, see ${generateHelpUrl('js-client-cdn-configuration')}.`,
   'To hide this warning, please set the `useCdn` option to either `true` or `false` when creating',
   'the client.'
-]
+])
 
-const printCdnWarning = (() => {
-  let hasWarned = false
-  return () => {
-    if (hasWarned) {
-      return
-    }
-
-    // eslint-disable-next-line no-console
-    console.warn(cdnWarning.join(' '))
-    hasWarned = true
-  }
-})()
+const printTokenWarning = printWarning([
+  'You have configured Sanity client to use a token in the Browser. This may cause unintended security issues.',
+  `Make sure to read ${generateHelpUrl('js-client-token-browser')}.`,
+  'If you are *absolutely* sure what you are doing, you can hide this warning, by setting the `ignoreTokenBrowserWarning` option to `true`'
+])
 
 exports.defaultConfig = defaultConfig
 
@@ -52,6 +51,14 @@ exports.initConfig = (config, prevConfig) => {
 
   if (typeof newConfig.useCdn === 'undefined') {
     printCdnWarning()
+  }
+
+  if (
+    IS_BROWSER &&
+    typeof newConfig.token !== 'undefined' &&
+    newConfig.ignoreTokenBrowserWarning !== true
+  ) {
+    printTokenWarning()
   }
 
   if (projectBased) {
